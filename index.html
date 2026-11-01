@@ -132,7 +132,10 @@ function drawExplorer(){
   for(const n of new Set([...entries(p.top_notes),...entries(p.heart_notes),...entries(p.base_notes),...entries(p.notes)].map(x=>x.trim()).filter(Boolean))){
    const k=norm(n);if(!noteMap.has(k))noteMap.set(k,{name:n,count:0});noteMap.get(k).count++;
   }
-  for(const n of new Set(perfumerNames(p.perfumers))){const k=norm(n);if(!perfMap.has(k))perfMap.set(k,{name:n,count:0});perfMap.get(k).count++}
+  for(const n of new Set(perfumerNames(p.perfumers))){
+   const k=norm(n);if(!perfMap.has(k))perfMap.set(k,{name:n,count:0,works:[]});
+   const item=perfMap.get(k);item.count++;item.works.push(p);
+  }
  }
  let result=[];
  if(mode==='perfumes')result=all.filter(p=>!q||norm([p.name,p.house,p.perfumers,p.top_notes,p.heart_notes,p.base_notes,p.notes].join(' ')).includes(q)).sort((a,b)=>a.house.localeCompare(b.house));
@@ -140,8 +143,24 @@ function drawExplorer(){
  $('exploreStats').textContent=all.length.toLocaleString('de-DE')+' Parfüms · '+noteMap.size.toLocaleString('de-DE')+' unterschiedliche Noten · '+perfMap.size.toLocaleString('de-DE')+' Parfümeure in aktuell geladenen Daten · '+result.length.toLocaleString('de-DE')+' Treffer';
  box.innerHTML=result.slice(0,explorerLimit).map(p=>mode==='perfumes'
  ?'<div style="padding:9px 0;border-bottom:1px solid #dce9df"><b>'+esc(p.name)+'</b> · '+esc(p.house)+(p.perfumers?'<div class="tiny muted">Parfümeur: '+esc(String(p.perfumers))+'</div>':'')+(p.url&&/^https:\/\//i.test(p.url)?'<a target="_blank" rel="noopener noreferrer" href="'+esc(p.url)+'">Quelle öffnen</a>':'')+'</div>'
+ :mode==='perfumers'?perfumerProfileHtml(p)
  :'<div style="padding:8px 0;border-bottom:1px solid #dce9df">'+esc(p.name)+' <span class="tiny muted">('+p.count.toLocaleString('de-DE')+' Parfüms)</span></div>').join('')||'<p class="muted">Keine Treffer in den geladenen Daten.</p>';
  $('exploreMore').style.display=result.length>explorerLimit?'inline-block':'none';
+}
+function perfumerProfileHtml(p){
+ const families=new Map(),notes=new Map();
+ for(const work of p.works){
+  const fam=String(work.family||'').trim();
+  if(fam)families.set(fam,(families.get(fam)||0)+1);
+  for(const n of new Set([...entries(work.top_notes),...entries(work.heart_notes),...entries(work.base_notes),...entries(work.notes)].map(x=>x.trim()).filter(Boolean))){
+   notes.set(n,(notes.get(n)||0)+1);
+  }
+ }
+ const top=(m)=>[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6);
+ const familiesLine=top(families).map(([n,c])=>esc(n)+' ('+c+')').join(', ')||'Keine klassifizierten Duftfamilien';
+ const notesLine=top(notes).map(([n,c])=>esc(n)+' ('+c+')').join(', ')||'Keine Noteninformationen';
+ const works=p.works.slice(0,16).map(w=>'<li>'+esc(w.house)+' · '+esc(w.name)+(w.url&&/^https:\/\//i.test(w.url)?' <a href="'+esc(w.url)+'" target="_blank" rel="noopener noreferrer">Quelle</a>':'')+'</li>').join('');
+ return '<details style="border-bottom:1px solid #dce9df;padding:11px 0"><summary style="cursor:pointer"><b>'+esc(p.name)+'</b> <span class="tiny muted">· '+p.count+' zugeordnete Düfte</span></summary><div style="padding:10px 5px"><div class="tiny muted">Statistische Auswertung ausschließlich der geladenen Einträge. Keine Biografie und keine belegte persönliche Stilpräferenz.</div><p><b>Häufige Duftfamilien:</b> '+familiesLine+'</p><p><b>Häufige Duftnoten:</b> '+notesLine+'</p><b>Erfasste Kreationen:</b><ul>'+works+'</ul>'+(p.works.length>16?'<p class="tiny muted">Weitere '+(p.works.length-16)+' Einträge nicht angezeigt.</p>':'')+'</div></details>';
 }
 $('exploreMode').onchange=()=>{explorerLimit=30;drawExplorer()};
 $('exploreQuery').oninput=()=>{explorerLimit=30;drawExplorer()};
