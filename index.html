@@ -111,5 +111,5 @@ $('freeRemove').onclick=()=>{freePf=[];syncPf();$('freeStatus').textContent='Kos
 $('importParfumo').onclick=()=>$('parfumoFile').click();
 $('removeParfumo').onclick=()=>{csvPf=[];syncPf()};
 $('parfumoFile').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let arr=importParfumoCsv(await f.text());if(!arr.length)throw Error('Keine geeigneten Datensätze gefunden. Erwartet: Name, Brand, Top_Notes, Middle_Notes, Base_Notes.');csvPf=arr;syncPf()}catch(err){alert('CSV-Import fehlgeschlagen: '+err.message)}e.target.value=''};
-rebuildAliases();updateFamilies();syncPf();selected();$('status').textContent='Bereit. Duftnoten sind offline nutzbar. Für den Scento-Vergleich auf „Erneut laden“ klicken.';
+rebuildAliases();updateFamilies();syncPf();selected();fetchData();
 </script></body></html>
