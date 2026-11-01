@@ -24,7 +24,34 @@ function norm(s){return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,''
 function familyFor(n){return materials.find(m=>norm(m.name)===norm(n))?.family||'Other'}
 function updateFamilies(){let fam=[...new Set(materials.map(n=>n.family))].sort();$('family').innerHTML='<option value="">Alle Notenfamilien</option>'+fam.map(f=>`<option value="${esc(f)}">${esc(families[f]||f)}</option>`).join('')}
 function catalog(){let q=norm($('search').value),fam=$('family').value;let items=materials.filter(m=>(!fam||m.family===fam)&&(!q||norm(m.name).includes(q)||norm(de[m.name]||'').includes(q)||norm(m.aliases||'').includes(q))).slice(0,100);$('catalog').innerHTML=items.map(m=>`<div class="option"><div>${esc(de[m.name]||m.name)} <small class="muted">${esc(m.name)}</small> <span class="group">${esc(families[m.family]||m.family)}</span></div><button data-add="${esc(m.name)}" ${state.some(n=>norm(n.name)===norm(m.name))?'disabled':''}>+</button></div>`).join('')||'<div class="empty" style="padding:10px">Keine passende Note gefunden</div>'}
-function selected(){ $('count').textContent=state.length+' Noten';$('selected').innerHTML=state.length?state.map((n,i)=>`<div class="note"><label><b>${esc(de[n.name]||n.name)}</b><span><b>${n.weight}</b>/100 <button data-delete="${i}" style="border:0;background:none;color:#b05842;cursor:pointer">✕</button></span></label><div class="row"><select data-stage="${i}" style="max-width:165px;padding:6px"><option value="top" ${n.stage==='top'?'selected':''}>Kopf</option><option value="heart" ${n.stage==='heart'?'selected':''}>Herz</option><option value="base" ${n.stage==='base'?'selected':''}>Basis</option></select><span class="muted tiny">Intensität</span></div><input data-weight="${i}" type="range" min="0" max="100" step="5" value="${n.weight}"></div>`).join(''):'<div class="empty">Füge links mindestens eine Note hinzu.</div>';catalog();profile();renderIdeas();matching();analyseOriginality()}
+
+const NOTE_SUGGESTIONS=[
+ ['Bergamot','Citrus','top','Verleiht dem Auftakt eine helle, zitrische Frische'],
+ ['Pink Pepper','Spice','top','Setzt einen prickelnden, würzigen Kontrast'],
+ ['Cardamom','Spice','top','Fügt eine kühle, aromatische Würze hinzu'],
+ ['Mandarin','Citrus','top','Bringt eine weichere, saftige Zitrusfrische'],
+ ['Jasmine','Floral','heart','Ergänzt eine blumige Mitte'],
+ ['Rose','Floral','heart','Verstärkt eine elegante florale Richtung'],
+ ['Lavender','Aromatic herb','heart','Macht das Herz aromatischer und krautiger'],
+ ['Cactus','Green','heart','Unterstreicht den grün-frischen Charakter'],
+ ['Cedarwood','Wood','base','Ergänzt eine trockene, holzige Struktur'],
+ ['Sandalwood','Wood','base','Macht die Basis cremiger und weicher'],
+ ['Vetiver','Wood','base','Ergänzt trockene, erdig-holzige Nuancen'],
+ ['Musk','Musk','base','Fügt einen sanften Moschus-Unterbau hinzu'],
+ ['Vanilla','Gourmand','base','Verschiebt das Konzept in eine wärmere und süßere Richtung'],
+ ['Tonka Bean','Gourmand','base','Verleiht eine warme gourmandige Nuance']
+];
+function renderIdeas(){
+ const out=$('noteIdeas');if(!out)return;
+ if(!state.length){out.innerHTML='<div class="empty">Wähle zuerst eine Duftnote.</div>';return}
+ const used=new Set(state.map(x=>norm(x.name)));
+ const chosenFamilies=new Set(state.map(x=>familyFor(x.name)));
+ const list=NOTE_SUGGESTIONS.filter(x=>!used.has(norm(x[0]))).sort((a,b)=>Number(!chosenFamilies.has(b[1]))-Number(!chosenFamilies.has(a[1]))).slice(0,6);
+ out.innerHTML=list.map((n,i)=>'<div class="idea-card"><div class="idea-head"><b>'+esc(de[n[0]]||n[0])+'</b><span class="badge">'+esc(families[n[1]]||n[1])+'</span></div><p>'+esc(n[3])+'. Die rechnerische Gewichtung der Duftfamilie '+esc(families[n[1]]||n[1])+' steigt bei einer Intensität von 50/100; die tatsächliche Geruchswirkung muss getestet werden.</p><button type="button" class="secondary" data-idea="'+i+'">+ Hinzufügen</button></div>').join('');
+ out.querySelectorAll('[data-idea]').forEach(btn=>btn.onclick=()=>{let n=list[Number(btn.dataset.idea)];if(n&&!state.some(x=>norm(x.name)===norm(n[0]))){state.push({name:n[0],weight:50,stage:n[2]});selected()}});
+}
+let analysisTimer;function scheduleHeavyAnalysis(){clearTimeout(analysisTimer);analysisTimer=setTimeout(()=>{matching();analyseOriginality()},450)}
+function selected(){ $('count').textContent=state.length+' Noten';$('selected').innerHTML=state.length?state.map((n,i)=>`<div class="note"><label><b>${esc(de[n.name]||n.name)}</b><span><b>${n.weight}</b>/100 <button data-delete="${i}" style="border:0;background:none;color:#b05842;cursor:pointer">✕</button></span></label><div class="row"><select data-stage="${i}" style="max-width:165px;padding:6px"><option value="top" ${n.stage==='top'?'selected':''}>Kopf</option><option value="heart" ${n.stage==='heart'?'selected':''}>Herz</option><option value="base" ${n.stage==='base'?'selected':''}>Basis</option></select><span class="muted tiny">Intensität</span></div><input data-weight="${i}" type="range" min="0" max="100" step="5" value="${n.weight}"></div>`).join(''):'<div class="empty">Füge links mindestens eine Note hinzu.</div>';catalog();profile();renderIdeas();scheduleHeavyAnalysis()}
 const VIZ_COLORS=['#4b9873','#d49d5e','#ba7b9c','#6a99ba','#b9b36e','#a57258','#8a90b5','#d0ad88','#76ae9a','#ac9bca'];
 function pieProfile(sorted){
  if(!sorted.length)return '<div class="viz-muted">Wähle Duftnoten für die Tortengrafik.</div>';
@@ -41,7 +68,7 @@ function pyramidProfile(){
  if(!state.length)return '<div class="viz-muted">Noch keine Noten für die Duftpyramide gewählt.</div>';
  return [['top','KOPF'],['heart','HERZ'],['base','BASIS']].map(([stage,label])=>{
   const ns=state.filter(n=>n.stage===stage).sort((a,b)=>b.weight-a.weight);
-  return '<div class="pyr-stage '+stage+'"><strong>'+label+'</strong>'+(ns.length?ns.map(n=>esc(de[n.name]||n.name)+' ('+n.weight+'/100)').join(' · '):'<span class="viz-muted">Noch keine Note</span>')+'</div>';
+  return '<div class="pyr-stage '+stage+'"><strong>'+label+'</strong>'+(ns.length?ns.map(n=>esc(de[n.name]||n.name)).join(' · '):'<span class="viz-muted">Noch keine Note</span>')+'</div>';
  }).join('');
 }
 function scentPrediction(sorted){
@@ -78,7 +105,7 @@ let extra=Math.max(0,all.length-used.size);let coverage=total?weighted/total:0;l
 function parfumoSearch(name,house){return 'https://www.parfumo.de/search?q='+encodeURIComponent(house+' '+name)}
 function matching(){let combined=candidatePerfumes();if(!combined.length){$('matches').innerHTML='<div class="empty">Die Datenbank ist noch nicht geladen. Ohne echte Datensätze werden keine Treffer angezeigt.</div>';return}let results=combined.map(p=>scorePerfume(p)).filter(p=>p&&p.common.length).sort((a,b)=>b.score-a.score).slice(0,15);$('matches').innerHTML=results.map((p,i)=>`<article class="match"><div class="row"><div><b>${i+1}. ${esc(p.name)}</b><div class="muted tiny">${esc(p.house)} · ${p.source==='ParfumDB'?'ParfumDB (lizenzierter Import)':p.source==='Parfumo CSV'?'Parfumo (CSV-Import)':p.source==='Parfumo manuell'?'Parfumo (eigener Eintrag)':'Scento'}</div></div><div class="badge">${p.score.toFixed(1).replace('.',',')} / 100</div></div><div class="metric" style="margin:8px 0"><div class="bar"><div class="fill" style="width:${p.score}%"></div></div></div><div class="tiny"><b>Exakte / synonyme Noten:</b> ${esc(p.common.filter(n=>n.exact).map(n=>de[n.selected]||n.selected).join(', ')||'Keine')}</div><div class="tiny"><b>Verwandte Noten:</b> ${esc(p.common.filter(n=>n.related).map(n=>(de[n.selected]||n.selected)+' ≈ '+n.found).join(', ')||'Keine')}</div><div class="tiny muted" style="margin:5px 0">Gewichtete Abdeckung: ${p.coverage}% · Zusätzliche Vergleichsnoten: ${p.extra} · Modellscore, keine Geruchswahrscheinlichkeit</div><div class="row" style="justify-content:flex-start">${p.url&&/^https:\/\//i.test(p.url)?`<a href="${esc(p.url)}" target="_blank" rel="noopener" class="tiny">Quelle ansehen ↗</a>`:''}<a href="${esc(parfumoSearch(p.name,p.house))}" target="_blank" rel="noopener" class="tiny">Auf Parfumo suchen ↗</a></div></article>`).join('')||'<div class="empty">Keine passenden Notenbezüge gefunden.</div>'}
 function analyseOriginality(){
- const db=candidatePerfumes();const el=$('originality'),out=$('suggestions');
+ const db=candidatePerfumes().slice(0,350);const el=$('originality'),out=$('suggestions');
  if(!db.length){el.textContent='Originalitätsvergleich erst nach erfolgreichem Laden eines realen Datenbestands verfügbar.';out.innerHTML='';return}
  let chosen=state.filter(n=>n.weight>0);
  if(!chosen.length){el.textContent='Bitte mindestens eine Duftnote auswählen.';out.innerHTML='';return}
@@ -109,7 +136,7 @@ $('analyse').onclick=analyseOriginality;
 function importParfumoCsv(csv){let rows=parseCSV(csv);const find=(r,names)=>{for(let n of names){let k=Object.keys(r).find(k=>norm(k)===norm(n));if(k&&r[k])return r[k]}return ''};let arr=rows.map(r=>({name:find(r,['Name','Perfume','Perfume name']),house:find(r,['Brand','House','Marke']),top_notes:find(r,['Top_Notes','Top Notes','Kopfnote','Top']),heart_notes:find(r,['Middle_Notes','Middle Notes','Heart Notes','Heart_Notes','Herznote','Middle']),base_notes:find(r,['Base_Notes','Base Notes','Basisnote','Base']),notes:find(r,['Notes','All Notes']),url:find(r,['URL','Url','Link']),perfumers:find(r,['Perfumers','Perfumer','Parfümeure']),source:'Parfumo CSV'})).filter(x=>x.name&&x.house&&(x.notes||x.top_notes||x.heart_notes||x.base_notes));for(let p of arr){for(let k of ['notes','top_notes','heart_notes','base_notes'])p[k]=String(p[k]||'').replace(/\s*\|\s*/g,'; ').replace(/\s*,\s*/g,'; ').replace(/[\[\]{}"']/g,'')}return arr}
 async function fetchData(){ $('status').textContent='Scento-Daten werden geladen ...';try{let [p,m]=await Promise.all([fetch(BASE+'perfumes.csv'),fetch(BASE+'materials.csv')]);if(!p.ok||!m.ok)throw Error('HTTP '+p.status+'/'+m.status);let [pc,mc]=await Promise.all([p.text(),m.text()]);let pr=parseCSV(pc),mr=parseCSV(mc);if(pr.length<100||mr.length<50)throw Error('Unvollständiger Download');perfumes=pr.filter(x=>x.name&&x.notes);buildLookup();materials=mr.filter(x=>x.name).map(x=>({...x,family:x.material_family||'Other'}));$('status').textContent=`${perfumes.length.toLocaleString('de-DE')} echte Parfüms · ${materials.length} Duftnoten geladen`;rebuildAliases();updateFamilies();selected()}catch(err){console.warn(err);$('status').textContent='Online-Daten konnten nicht geladen werden. Internetzugang / Browser-CORS prüfen; keine erfundenen Treffer.';updateFamilies();selected()}}
 $('catalog').addEventListener('click',e=>{let b=e.target.closest('[data-add]');if(!b)return;let name=b.dataset.add;if(!state.some(n=>norm(n.name)===norm(name))){state.push({name,weight:50,stage:'heart'});selected()}});
-$('selected').addEventListener('input',e=>{if(e.target.dataset.weight===undefined)return;let i=+e.target.dataset.weight;state[i].weight=+e.target.value;e.target.closest('.note').querySelector('label span b').textContent=state[i].weight;profile();matching();analyseOriginality()});
+$('selected').addEventListener('input',e=>{if(e.target.dataset.weight===undefined)return;let i=+e.target.dataset.weight;state[i].weight=+e.target.value;e.target.closest('.note').querySelector('label span b').textContent=state[i].weight;profile();scheduleHeavyAnalysis()});
 $('selected').addEventListener('change',e=>{if(e.target.dataset.stage===undefined)return;state[+e.target.dataset.stage].stage=e.target.value;selected()});
 $('selected').addEventListener('click',e=>{if(e.target.dataset.delete===undefined)return;state.splice(+e.target.dataset.delete,1);selected()});
 $('search').addEventListener('input',catalog);$('family').addEventListener('change',catalog);$('clear').onclick=()=>{state=[];selected()};$('refresh').onclick=fetchData;
