@@ -52,15 +52,16 @@ function renderIdeas(){
 }
 let analysisTimer;function scheduleHeavyAnalysis(){clearTimeout(analysisTimer);analysisTimer=setTimeout(()=>{matching();analyseOriginality()},450)}
 function selected(){ $('count').textContent=state.length+' Noten';$('selected').innerHTML=state.length?state.map((n,i)=>`<div class="note"><label><b>${esc(de[n.name]||n.name)}</b><span><b>${n.weight}</b>/100 <button data-delete="${i}" style="border:0;background:none;color:#b05842;cursor:pointer">✕</button></span></label><div class="row"><select data-stage="${i}" style="max-width:165px;padding:6px"><option value="top" ${n.stage==='top'?'selected':''}>Kopf</option><option value="heart" ${n.stage==='heart'?'selected':''}>Herz</option><option value="base" ${n.stage==='base'?'selected':''}>Basis</option></select><span class="muted tiny">Intensität</span></div><input data-weight="${i}" type="range" min="0" max="100" step="5" value="${n.weight}"></div>`).join(''):'<div class="empty">Füge links mindestens eine Note hinzu.</div>';catalog();profile();renderIdeas();scheduleHeavyAnalysis()}
-const VIZ_COLORS=['#4b9873','#d49d5e','#ba7b9c','#6a99ba','#b9b36e','#a57258','#8a90b5','#d0ad88','#76ae9a','#ac9bca'];
+const FAMILY_COLORS={"Citrus":"#E3C94B","Fruit":"#E97A5F","Floral":"#D98AB7","White floral":"#EFE6C8","Wood":"#9A7654","Spice":"#C9853E","Gourmand":"#C9A15A","Musk":"#CFC8BD","Amber":"#D88A34","Green":"#67A86E","Aromatic herb":"#6F9366","Marine & mineral":"#6AA9C8","Powdery":"#D6BDD7","Leather":"#7A5B45","Resin":"#8D6945","Smoky":"#7A7D80","Other":"#9DA9A1"};
+function familyColor(name){return FAMILY_COLORS[name]||FAMILY_COLORS.Other}
 function pieProfile(sorted){
  if(!sorted.length)return '<div class="viz-muted">Wähle Duftnoten für die Tortengrafik.</div>';
  const total=sorted.reduce((a,v)=>a+v[1],0),parts=[];let cursor=0;
  const legend=sorted.map(([name,value],i)=>{
   const percent=value/total*100;
-  parts.push(VIZ_COLORS[i%VIZ_COLORS.length]+' '+cursor.toFixed(2)+'% '+(cursor+percent).toFixed(2)+'%');
+  parts.push(familyColor(name)+' '+cursor.toFixed(2)+'% '+(cursor+percent).toFixed(2)+'%');
   cursor+=percent;
-  return '<div class="pie-key"><span class="pie-dot" style="background:'+VIZ_COLORS[i%VIZ_COLORS.length]+'"></span>'+esc(families[name]||name)+' '+percent.toFixed(0)+'%</div>';
+  return '<div class="pie-key"><span class="pie-dot" style="background:'+familyColor(name)+'"></span>'+esc(families[name]||name)+' '+percent.toFixed(0)+'%</div>';
  }).join('');
  return '<div class="pie-body"><div class="pie-graphic" role="img" aria-label="Gewichtete Verteilung der Duftfamilien" style="background:conic-gradient('+parts.join(',')+')"></div><div class="pie-legend">'+legend+'</div></div>';
 }
@@ -86,7 +87,7 @@ function profile(){
  for(let n of state){let fam=familyFor(n.name),val=n.weight/100;score[fam]=(score[fam]||0)+val}
  let sorted=Object.entries(score).sort((a,b)=>b[1]-a[1]);
  let max=Math.max(...sorted.map(x=>x[1]),1);
- $('profile').innerHTML=sorted.map(([f,v])=>'<div class="metric"><span>'+esc(families[f]||f)+'</span><div class="bar"><div class="fill" style="width:'+Math.round(v/max*100)+'%"></div></div><strong>'+Math.round(v/max*100)+'%</strong></div>').join('')||'<div class="empty">Noch keine Auswahl</div>';
+ $('profile').innerHTML=sorted.map(([f,v])=>'<div class="metric"><span>'+esc(families[f]||f)+'</span><div class="bar"><div class="fill" style="background:'+familyColor(f)+';width:'+Math.round(v/max*100)+'%"></div></div><strong>'+Math.round(v/max*100)+'%</strong></div>').join('')||'<div class="empty">Noch keine Auswahl</div>';
  $('description').textContent=sorted.length?'Duftcharakter: '+sorted.slice(0,3).map(([f])=>families[f]||f).join(' · ')+'. Die Balken zeigen relative Familienprägungen, nicht den Anteil in der Rezeptur.':'Wähle Noten, um eine Duftrichtung zu berechnen.';
  $('pieWrap').innerHTML=pieProfile(sorted);
  $('pyramidWrap').innerHTML=pyramidProfile();
